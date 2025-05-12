@@ -4,7 +4,7 @@
     <script>
       (async function() {
         async function get_index() {
-          const req = await fetch("/index.json");
+          const req = await fetch("index.json");
           return req.json();
         }
         const index = await get_index();
@@ -16,7 +16,7 @@
           return `${start}-${end}`;
         });  // TODO(max): failure
         const ranges = offsets.join(", ");
-        const req = await fetch("/vecs.jsonl", {
+        const req = await fetch("vecs.jsonl", {
           headers: new Headers({
             "Range": `bytes=${ranges}`
           }),
