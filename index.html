@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (async function() {
+        async function get_index() {
+          const req = await fetch("/index.json");
+          return req.json();
+        }
+        const index = await get_index();
+        const query = "network first programming language";
+        const words = query.split(/\s+/);
+        const offsets = words.map(word => {
+          const [start, length] = index[word];
+          const end = start+length-1;
+          return `${start}-${end}`;
+        });  // TODO(max): failure
+        const ranges = offsets.join(", ");
+        const req = await fetch("/vecs.jsonl", {
+          headers: new Headers({
+            "Range": `bytes=${ranges}`
+          }),
+        });
+        const text = await req.text();
+        console.log(text.length);
+        console.log(text);
+      })();
+    </script>
+  </head>
+  <body>
+    hi
+  </body>
+</html>
