@@ -10,20 +10,19 @@
         const index = await get_index();
         const query = "network first programming language";
         const words = query.split(/\s+/);
-        const offsets = words.map(word => {
+        const requests = words.map(word => {
+          // TODO(max): failure
           const [start, length] = index[word];
           const end = start+length-1;
-          return `${start}-${end}`;
-        });  // TODO(max): failure
-        const ranges = offsets.join(", ");
-        const req = await fetch("vecs.jsonl", {
-          headers: new Headers({
-            "Range": `bytes=${ranges}`
-          }),
+          return fetch("vecs.jsonl", {
+            headers: new Headers({
+              "Range": `bytes=${start}-${end}`,
+            }),
+          });
         });
-        const text = await req.text();
-        console.log(text.length);
-        console.log(text);
+        const responses = await Promise.all(requests);
+        const embeddings = await Promise.all(responses.map(r => r.json()));
+        console.log(embeddings);
       })();
     </script>
   </head>
