@@ -1,32 +1,100 @@
 <!DOCTYPE html>
 <html>
   <head>
+  </head>
+  <body>
+    <div>
+      <input type="text" id="search" />
+    </div>
+    <div>
+      <ul id="search_results">
+      </ul>
+    </div>
     <script>
+      function vec_norm(v) {
+        return Math.sqrt(v.reduce((acc, e) => acc+e*e, 0));
+      }
+      function vec_add(a, b) {
+        const result = [];
+        for (let i = 0; i < a.length; i++) {
+          result.push(a[i] + b[i]);
+        }
+        return result;
+      }
+      function vec_cosine_similarity(a, b) {
+        const a_norm = vec_norm(a);
+        const b_norm = vec_norm(b);
+        let sum = 0;
+        a.forEach(function(e, i) {
+          sum += e*b[i];
+        });
+        return sum/(a_norm*b_norm);
+      }
+      function debounce(func, timeout = 300){
+        // https://www.freecodecamp.org/news/javascript-debounce-example/
+        let timer;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => { func.apply(this, args); }, timeout);
+        };
+      }
       (async function() {
+        // Download stuff
         async function get_index() {
           const req = await fetch("index.json");
           return req.json();
         }
-        const index = await get_index();
-        const query = "network first programming language";
-        const words = query.split(/\s+/);
-        const requests = words.map(word => {
-          // TODO(max): failure
-          const [start, length] = index[word];
-          const end = start+length-1;
-          return fetch("vecs.jsonl", {
-            headers: new Headers({
-              "Range": `bytes=${start}-${end}`,
-            }),
+        async function get_post_embeddings() {
+          const req = await fetch("post_embeddings.json");
+          return req.json();
+        }
+        const index = new Map(Object.entries(await get_index()));
+        const post_embeddings = new Map(Object.entries(await get_post_embeddings()));
+        // Add search handler
+        search.addEventListener("input", debounce(async function(value) {
+          const query = search.value;
+          const words = query.split(/\s+/);
+          if (words.length === 0) {
+            // No words
+            return;
+          }
+          const requests = words.reduce((acc, word) => {
+            const entry = index.get(word);
+            if (entry === undefined) {
+              // Word is not valid; skip it
+              return acc;
+            }
+            const [start, length] = entry;
+            const end = start+length-1;
+            acc.push(fetch("vecs.jsonl", {
+              headers: new Headers({
+                "Range": `bytes=${start}-${end}`,
+              }),
+            }));
+            return acc;
+          }, []);
+          if (requests.length === 0) {
+            // None are valid words :(
+            search_results.innerHTML = "No results :(";
+            return;
+          }
+          const responses = await Promise.all(requests);
+          const embeddings = await Promise.all(responses.map(r => r.json()));
+          const query_embedding = embeddings.reduce((acc, e) => vec_add(acc, e));
+          const post_ranks = {};
+          for (const [path, embedding] of post_embeddings) {
+            post_ranks[path] = vec_cosine_similarity(embedding, query_embedding);
+          }
+          const sorted_ranks = Object.entries(post_ranks).sort(function(a, b) {
+            // Decreasing
+            return b[1]-a[1];
           });
-        });
-        const responses = await Promise.all(requests);
-        const embeddings = await Promise.all(responses.map(r => r.json()));
-        console.log(embeddings);
+          search_results.innerHTML = "";
+          for (let i = 0; i < 5; i++) {
+            search_results.innerHTML += `<li>${sorted_ranks[i][0]}</li>`;
+          }
+        }));
       })();
     </script>
-  </head>
-  <body>
-    hi
   </body>
 </html>
