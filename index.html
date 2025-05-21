@@ -81,7 +81,7 @@
           }, []);
           if (requests.length === 0) {
             // None are valid words :(
-            search_results.innerHTML = "No results :(";
+            search_results.innerHTML = "No results :( Can't understand any of the words in the query.";
             return;
           }
           const responses = await Promise.all(requests);
