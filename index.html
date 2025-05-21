@@ -68,6 +68,7 @@
             const entry = index.get(word);
             if (entry === undefined) {
               // Word is not valid; skip it
+              console.log(`Unknown word ${word}`);
               return acc;
             }
             const [start, length] = entry;
